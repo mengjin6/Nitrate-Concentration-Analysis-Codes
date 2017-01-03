@@ -1,6 +1,7 @@
 ############### Packages Used ###############
 
 install.packages("gridExtra")
+install.packages("XLConnectJars")
 install.packages("XLConnect")
 install.packages("wavelets")
 install.packages("wmtsa")
@@ -12,6 +13,7 @@ install.packages("logspline")
 install.packages("actuar")
 
 require(gridExtra)
+require(XLConnectJars)
 require(XLConnect)
 require(wavelets)
 require(wmtsa)
@@ -25,7 +27,6 @@ require(actuar)
 
 
 ############### 1 Introduction ###############
-
 
 #### Loading Nitrate Concentration Data into R ####
 options(java.parameters = "-Xmx4g" )
@@ -309,11 +310,11 @@ jump.dector.MODWT.d4 = function(simu.data, layer, index){
 #### Simulation Data Generator from model (5.1) in the paper ####
 data.generator = function(v, j.size, w, noise.level){
   j.n = w
-  ### Continuous Part Generator ###
+  # Continuous Part Generator #
   conti.b1 = rnorm(v, 0, sd = sqrt(1 / v))
   conti.b2 = rnorm(v, 0, sd = sqrt(1 / v))
   conti.b3 = -0.62 * conti.b1 + sqrt(1 - 0.62 ^ 2) * conti.b2
-  ### Euler Scheme ###
+  # Euler Scheme #
   conti.log.sigma.sq = rep(0, v)
   conti.log.sigma.sq.0 = rnorm(1, mean = -6.802, sd = sqrt(0.3125))
   for (i in 0:v - 1) {
@@ -329,7 +330,7 @@ data.generator = function(v, j.size, w, noise.level){
   for (i in 1:v) {
     conti.part[i] = sum(conti.diff[1:i])
   }
-  ### Jump Part Generator ###
+  # Jump Part Generator #
   if (w >= 2){
     jump.loca = sort(round(runif(w, min = 0, max = 1) * v, digits = 0))
     while (min(diff(jump.loca)) <= 16) {
@@ -346,9 +347,9 @@ data.generator = function(v, j.size, w, noise.level){
       jump.part[i] = jump.part[i] + jump.size[j]
     }
   }
-  ### Noise Part Generator ###
+  # Noise Part Generator #
   noise.part = rnorm(v, mean=0, sd=noise.level)
-  ### Simulation Data ###
+  # Simulation Data #
   simu.data = conti.part + jump.part + noise.part
   simu.data.nojump = conti.part + noise.part
   simu.data.conti = conti.part
@@ -620,7 +621,7 @@ for (j in 1:t) {
   jump.exact.pct[j] = sum(jump.acc) / m * 100
   s1.JMSRV.MSE[j] = sum(s1.JMSRV.record) / m * 10000
   s1.JV.MSE[j] = sum(s1.JV.MSE.record) / m * 10000
-  s1.jump.exact.pct[j] = sum(s1.jump.acc) / m * 10000
+  s1.jump.exact.pct[j] = sum(s1.jump.acc) / m * 100
   s2.JMSRV.MSE[j] = sum(s2.JMSRV.record) / m * 10000
   s2.JV.MSE[j] = sum(s2.JV.MSE.record) / m * 10000
   s2.jump.exact.pct[j] = sum(s2.jump.acc) / m * 100
@@ -719,8 +720,8 @@ for (k in 1:20){
 
 
 #### Reproduce Figure 2 ####
-#png("Wavelet_Method_Evaluation.png", 
-#    units = "in", height = 5.1, width = 9.7, res = 300)
+png("Wavelet_Method_Evaluation.png", 
+    units = "in", height = 5.1, width = 9.7, res = 300)
 
 par(mfrow = c(1, 2), oma = c(1.5, 0, 0, 0), 
     mar = c(3, 3, 3, 1.5) + 0.2, mgp = c(2, 1, 0))
@@ -764,8 +765,8 @@ dev.off()
 
 
 #### Reproduce Figure 3 ####
-#png("Wavelet_Filter_Comparison.png", 
-#    units = "in", height = 9, width = 9, res = 300)
+png("Wavelet_Filter_Comparison.png", 
+    units = "in", height = 9, width = 9, res = 300)
 
 par(mfrow=c(2, 2), oma = c(2, 0, 0, 0), 
     mar = c(3, 3, 3, 1.5) + 0.2, mgp = c(2, 1, 0))
@@ -832,7 +833,6 @@ dev.off()
 ############### 6 Nitrate Concentration Analysis ###############
 
 ########## Reproduce 6.1 Process Variation Analysis ##########
-
 
 #### Reproduce Process Variation Analysis Information ####
 
@@ -1031,6 +1031,24 @@ all.week.jump.loca2.data = c(jump.loca.week.1,
                                all.week.jump.loca2.data != "NA"]))
 
 
+#### Results Used in section 6.1 Process Variation Analysis #### 
+
+### Number of Weeks with at Least 1 Jump ###
+sum(week.nega.jump.num != 0 | week.posi.jump.num != 0)
+
+### Number of Weeks with at Least 2 Jump ###
+sum(week.nega.jump.num + week.posi.jump.num > 1)
+
+### Number of Weeks with at Least 1 Positive Jump and 1 Negative Jump ###
+sum(week.nega.jump.num != 0 & week.posi.jump.num != 0)
+
+### Number of Weeks with Estimated Integrated Volatility less than 0.1 ###
+sum(ni.JMSRV < 0.1)
+
+### Number of Weeks with Estimated Integrated Volatility less than 0.1 ###
+sum(ni.JMSRV > 1)
+
+
 #### Reproduce Figure 4 ####
 jump.number.detail = data.frame(jump.index = all.week.index,
                                 jump.loca = all.week.jump.loca2.data,
@@ -1138,7 +1156,6 @@ dev.off()
 
 ########## Reproduce 6.2 Jump Distribution Analysis ##########
 
-
 #### Reproduce Jump Distribution Analysis Information ####
 
 ### Detected Jump Time and Quarter Information ###
@@ -1174,6 +1191,9 @@ nega.jump.abs = abs(nega.jump)
 
 Q2.jump = jump.data$jump.size[which(jump.data$jump.season == "Q2")]
 NonQ2.jump = jump.data$jump.size[-which(jump.data$jump.season == "Q2")]
+
+
+#### Results Presented in section 6.2 Jump Distribution Analysis ####
 
 ### Runs test on Runs above or below 0 for All the Jumps ###
 runs(all.jump)
