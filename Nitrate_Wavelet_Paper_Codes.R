@@ -63,108 +63,35 @@ dev.off()
 
 ############### 5 Simulation Studies ###############
 
-
 #### Functions to Acquire Wavelet Coefficients ####
 
 ### Haar Wavelet Coefficients Function (for layer 4) ###
 jump.dector.MODWT.haar = function(simu.data, layer, index){
   
-  n = length(simu.data)
+  n=length(simu.data)
   TY.reflection = 0
   l = 0
   threshold = 0
   my.jump = 0
   
-  j_n = log(n,2) - log(n / ((log(n))^2), 2)
-  sim.data.reflection = extend.series(simu.data, method = "reflection", 
+  j_n = log(n, 2) - log(n / ((log(n)) ^ 2), 2)
+  sim.data.reflection = extend.series(simu.data,
+                                      method = "reflection",
                                       length = "double")
-  sim.wt.reflection = wavMODWT(sim.data.reflection, n.levels = 6, 
+  sim.wt.reflection = wavMODWT(sim.data.reflection, 
+                               n.levels = 6,
                                wavelet = "haar")
   c.char = "sim.wt.reflection$data$d"
   command.char = as.character(paste(c.char,layer, sep = ""))
   TY.reflection = eval(parse(text = command.char))
   
-  if (layer == 4) TY.reflection = shift(as.numeric(TY.reflection), places = 7, 
+  if (layer == 4) TY.reflection = shift(as.numeric(TY.reflection), 
+                                        places = 7, 
                                         dir = "left")
   l = length(TY.reflection) / 2
   threshold = median(abs(TY.reflection)) * sqrt(2 * log(n)) / 0.6745
-  TY = abs(TY.reflection[1:l])
-  
-  my.frame = data.frame(index = c(1:length(TY)), abs.TY = abs(TY))
-  my.jumpTY = my.frame$index[my.frame$abs.TY > threshold]
-  
-  if (length(my.jumpTY) == 0) my.jump = "NA"
-  if (length(my.jumpTY) > 0) my.jump = my.jumpTY
-  
-  my.jump.fil = rep(NA, length(my.jump))
-  if (my.jump[1] == "NA"){my.jump.fil = "NA"}
-  if (my.jump[1] != "NA"){
-    my.jump.fil[1] = my.jump[1] - 1 + 
-      which.max(TY[my.jump[1]:(my.jump[1] + index - 1)])
-    i = 1
-    j = 1
-    for (i in 1:length(my.jump)){
-      for (j in 1:length(my.jump) - 1){
-        if (is.na(my.jump.fil[i])) {break}
-        if ((my.jump[j + 1] - my.jump.fil[i]) >= index) {
-          my.jump.fil[i + 1] = my.jump[j + 1] - 1 + 
-            which.max(TY[my.jump[j + 1]:(my.jump[j + 1] + index - 1)])
-          break
-        }
-      }
-    }
-  }
-  my.jump = my.jump.fil[!is.na(my.jump.fil)]
-  
-  if (my.jump[1] == "NA") { 
-    my.jump.size = 0 
-    jump.adjusted.data = simu.data                     
-  }
-  if (my.jump[1] != "NA") { 
-    my.jump.size = rep(NA,length(my.jump))
-    for (j in 1:length(my.jump)){
-      my.jump.size[j] = mean(simu.data[my.jump[j]:min((my.jump[j] +
-                                                         index / 2 - 1), 
-                                                      length(simu.data))]) -
-        mean(simu.data[max((my.jump[j] - index / 2),0):(my.jump[j] - 1)])
-      my.jump.size[is.nan(my.jump.size)] = 0
-    }
-    my.jump.part = rep(0,n)
-    for (k in 1:length(my.jump)){
-      for (i in my.jump[k]:n){
-        my.jump.part[i] = my.jump.part[i] + my.jump.size[k]
-      }
-    }
-    jump.adjusted.data = simu.data - my.jump.part
-  }
-  return(list(detect.jump.loca = my.jump, detect.jump.size = my.jump.size, 
-              jump.adj.data = jump.adjusted.data, range = index))
-}
-
-### s8 Wavelet Coefficients Function (for layers 1 and 2) ###
-jump.dector.MODWT.s8 = function(simu.data, layer, index){
-  
-  n = length(simu.data)
-  TY.reflection = 0
-  l = 0
-  threshold = 0
-  my.jump = 0
-  
-  sim.data.reflection = extend.series(simu.data,method="reflection", 
-                                      length="double")
-  sim.wt.reflection = wavMODWT(sim.data.reflection, n.levels=6,wavelet="s8")
-  c.char = "sim.wt.reflection$data$d"
-  command.char = as.character(paste(c.char,layer, sep = ""))
-  TY.reflection = eval(parse(text = command.char))
-  
-  if (layer == 1) TY.reflection = shift(as.numeric(TY.reflection), 
-                                        places = 4, dir = "left")
-  if (layer == 2) TY.reflection = shift(as.numeric(TY.reflection), 
-                                        places = 11, dir = "left")
-  
-  l = length(TY.reflection) / 2
-  threshold = median(abs(TY.reflection)) * sqrt(2 * log(n)) / 0.6745
   TY=abs(TY.reflection[1:l])
+  
   my.frame = data.frame(index = c(1:length(TY)), abs.TY = abs(TY))
   my.jumpTY = my.frame$index[my.frame$abs.TY > threshold]
   
@@ -179,7 +106,87 @@ jump.dector.MODWT.s8 = function(simu.data, layer, index){
     i = 1
     j = 1
     for (i in 1:length(my.jump)){
-      for (j in 1:length(my.jump) - 1){
+      for (j in 1:length(my.jump)-1){
+        if (is.na(my.jump.fil[i])) {break}
+        if ((my.jump[j+1] - my.jump.fil[i]) >= index) {
+          my.jump.fil[i+1] = my.jump[j + 1] - 1 +
+            which.max(TY[my.jump[j + 1]:(my.jump[j + 1] + index - 1)])
+          break
+        }
+      }
+    }
+  }
+  my.jump = my.jump.fil[!is.na(my.jump.fil)]
+  
+  if (my.jump[1] == "NA") { 
+    my.jump.size = 0 
+    jump.adjusted.data = simu.data                     
+  }
+  if (my.jump[1] != "NA") { 
+    my.jump.size = rep(NA,length(my.jump))
+    for (j in 1:length(my.jump)){
+      my.jump.size[j] = mean(simu.data[my.jump[j]:min((my.jump[j] + index / 2 - 1),
+                                                      length(simu.data))]) - 
+        mean(simu.data[max((my.jump[j] - index / 2), 0):(my.jump[j] - 1)])
+      my.jump.size[is.nan(my.jump.size)] = 0
+    }
+    my.jump.part = rep(0, n)
+    for (k in 1:length(my.jump)){
+      for (i in my.jump[k]:n){
+        my.jump.part[i] = my.jump.part[i] + my.jump.size[k]
+      }
+    }
+    jump.adjusted.data = simu.data - my.jump.part
+  }
+  return(list(detect.jump.loca = my.jump, 
+              detect.jump.size = my.jump.size, 
+              jump.adj.data = jump.adjusted.data, 
+              range = index))
+}
+
+### s8 Wavelet Coefficients Function (for layers 1 and 2) ###
+jump.dector.MODWT.s8 = function(simu.data, layer, index){
+  
+  n=length(simu.data)
+  TY.reflection = 0
+  l = 0
+  threshold = 0
+  my.jump = 0
+  
+  sim.data.reflection = extend.series(simu.data,method = "reflection", 
+                                      length = "double")
+  sim.wt.reflection = wavMODWT(sim.data.reflection, 
+                               n.levels = 6, 
+                               wavelet = "s8")
+  c.char = "sim.wt.reflection$data$d"
+  command.char = as.character(paste(c.char, layer, sep = ""))
+  TY.reflection = eval(parse(text = command.char))
+  
+  if (layer == 1) TY.reflection = shift(as.numeric(TY.reflection), 
+                                        places = 4, 
+                                        dir = "left")
+  if (layer == 2) TY.reflection = shift(as.numeric(TY.reflection), 
+                                        places = 11, 
+                                        dir = "left")
+  
+  l = length(TY.reflection) / 2
+  threshold = median(abs(TY.reflection)) * sqrt(2 * log(n)) / 0.6745
+  TY=abs(TY.reflection[1:l])
+  my.frame = data.frame(index = c(1:length(TY)), abs.TY = abs(TY))
+  my.jumpTY = my.frame$index[my.frame$abs.TY > threshold]
+  
+  if (length(my.jumpTY) == 0) my.jump = "NA"
+  if (length(my.jumpTY) > 0) my.jump = my.jumpTY
+  
+  my.jump.fil = rep(NA,length(my.jump))
+  if (my.jump[1] == "NA"){my.jump.fil = "NA"}
+  if (my.jump[1] != "NA"){
+    my.jump.fil[1] = my.jump[1] - 1 +
+      which.max(TY[my.jump[1]:(my.jump[1] + index - 1)])
+    i = 1
+    j = 1
+    for (i in 1:length(my.jump)){
+      for (j in 1:length(my.jump)-1){
         if (is.na(my.jump.fil[i])) {break}
         if ((my.jump[j + 1] - my.jump.fil[i]) >= index) {
           my.jump.fil[i + 1] = my.jump[j + 1] - 1 + 
@@ -198,13 +205,12 @@ jump.dector.MODWT.s8 = function(simu.data, layer, index){
   if (my.jump[1] != "NA") { 
     my.jump.size = rep(NA,length(my.jump))
     for (j in 1:length(my.jump)){
-      my.jump.size[j] = mean(simu.data[my.jump[j]:min((my.jump[j] +
-                                                         index - 1), 
-                                                      length(simu.data))]) -
+      my.jump.size[j] = mean(simu.data[my.jump[j]:min((my.jump[j] + index - 1),
+                                                      length(simu.data))]) - 
         mean(simu.data[max((my.jump[j] - index), 0):(my.jump[j] - 1)])
       my.jump.size[is.nan(my.jump.size)] = 0
     }
-    my.jump.part = rep(0,n)
+    my.jump.part = rep(0, n)
     for (k in 1:length(my.jump)){
       for (i in my.jump[k]:n){
         my.jump.part[i] = my.jump.part[i] + my.jump.size[k]
@@ -212,37 +218,43 @@ jump.dector.MODWT.s8 = function(simu.data, layer, index){
     }
     jump.adjusted.data = simu.data - my.jump.part
   }
-  return(list(detect.jump.loca = my.jump, detect.jump.size = my.jump.size, 
-              jump.adj.data = jump.adjusted.data, range = index))
+  return(list(detect.jump.loca = my.jump, 
+              detect.jump.size = my.jump.size, 
+              jump.adj.data = jump.adjusted.data, 
+              range = index))
 }
 
 ### d4 Wavelet Coefficients function (for layers 2 and 3) ###
 jump.dector.MODWT.d4 = function(simu.data, layer, index){
   
-  n = length(simu.data)
+  n=length(simu.data)
   TY.reflection = 0
   l = 0
   threshold = 0
   my.jump = 0
   
-  sim.data.reflection = extend.series(simu.data,method="reflection", 
-                                      length="double")
-  sim.wt.reflection = wavMODWT(sim.data.reflection, n.levels = 6, 
+  sim.data.reflection = extend.series(simu.data,
+                                      method = "reflection",
+                                      length = "double")
+  sim.wt.reflection = wavMODWT(sim.data.reflection, 
+                               n.levels = 6,
                                wavelet = "d4")
   c.char = "sim.wt.reflection$data$d"
   command.char = as.character(paste(c.char,layer, sep = ""))
   TY.reflection = eval(parse(text = command.char))
   
   if (layer == 2) TY.reflection = shift(as.numeric(TY.reflection), 
-                                        places = 5, dir = "left")
+                                        places = 5, 
+                                        dir = "left")
   if (layer == 3) TY.reflection = shift(as.numeric(TY.reflection), 
-                                        places = 12, dir = "left")
+                                        places = 12, 
+                                        dir = "left")
   
   l = length(TY.reflection) / 2
   threshold = median(abs(TY.reflection)) * sqrt(2 * log(n)) / 0.6745
   TY=abs(TY.reflection[1:l])
   my.frame = data.frame(index = c(1:length(TY)), abs.TY = abs(TY))
-  my.jumpTY = my.frame$index[my.frame$abs.TY > threshold]
+  my.jumpTY = my.frame$index[my.frame$abs.TY>threshold]
   
   if (length(my.jumpTY) == 0) my.jump = "NA"
   if (length(my.jumpTY) > 0) my.jump = my.jumpTY
@@ -250,15 +262,15 @@ jump.dector.MODWT.d4 = function(simu.data, layer, index){
   my.jump.fil = rep(NA,length(my.jump))
   if (my.jump[1] == "NA"){my.jump.fil = "NA"}
   if (my.jump[1] != "NA"){
-    my.jump.fil[1] = my.jump[1] - 1 
-    + which.max(TY[my.jump[1]:(my.jump[1] + index - 1)])
+    my.jump.fil[1] = my.jump[1] - 1 + 
+      which.max(TY[my.jump[1]:(my.jump[1] + index - 1)])
     i = 1
     j = 1
     for (i in 1:length(my.jump)){
-      for (j in 1:length(my.jump) - 1){
+      for (j in 1:length(my.jump)-1){
         if (is.na(my.jump.fil[i])) {break}
         if ((my.jump[j + 1] - my.jump.fil[i]) >= index) {
-          my.jump.fil[i + 1] = my.jump[j + 1] - 1 +
+          my.jump.fil[i + 1] = my.jump[j + 1] - 1 + 
             which.max(TY[my.jump[j + 1]:(my.jump[j + 1] + index - 1)])
           break
         }
@@ -274,13 +286,12 @@ jump.dector.MODWT.d4 = function(simu.data, layer, index){
   if (my.jump[1] != "NA") { 
     my.jump.size = rep(NA,length(my.jump))
     for (j in 1:length(my.jump)){
-      my.jump.size[j] = mean(simu.data[my.jump[j]:min((my.jump[j] +
-                                                         index - 1), 
+      my.jump.size[j] = mean(simu.data[my.jump[j]:min((my.jump[j] + index - 1),
                                                       length(simu.data))]) - 
-        mean(simu.data[max((my.jump[j] - index),0):(my.jump[j] - 1)])
+        mean(simu.data[max((my.jump[j] - index), 0):(my.jump[j] - 1)])
       my.jump.size[is.nan(my.jump.size)] = 0
     }
-    my.jump.part = rep(0,n)
+    my.jump.part = rep(0, n)
     for (k in 1:length(my.jump)){
       for (i in my.jump[k]:n){
         my.jump.part[i] = my.jump.part[i] + my.jump.size[k]
@@ -288,31 +299,28 @@ jump.dector.MODWT.d4 = function(simu.data, layer, index){
     }
     jump.adjusted.data = simu.data - my.jump.part
   }
-  return(list(detect.jump.loca = my.jump, detect.jump.size = my.jump.size, 
-              jump.adj.data = jump.adjusted.data, range = index))
+  return(list(detect.jump.loca = my.jump, 
+              detect.jump.size = my.jump.size, 
+              jump.adj.data = jump.adjusted.data, 
+              range = index))
 }
 
 
 #### Simulation Data Generator from model (5.1) in the paper ####
 data.generator = function(v, j.size, w, noise.level){
-
   j.n = w
-  
   ### Continuous Part Generator ###
   conti.b1 = rnorm(v, 0, sd = sqrt(1 / v))
   conti.b2 = rnorm(v, 0, sd = sqrt(1 / v))
   conti.b3 = -0.62 * conti.b1 + sqrt(1 - 0.62 ^ 2) * conti.b2
-
   ### Euler Scheme ###
   conti.log.sigma.sq = rep(0, v)
   conti.log.sigma.sq.0 = rnorm(1, mean = -6.802, sd = sqrt(0.3125))
   for (i in 0:v - 1) {
-    if (i == 0) conti.log.sigma.sq[i + 1] = conti.log.sigma.sq.0 
-    + (-0.6802 - 0.10 * conti.log.sigma.sq.0) / v 
-    + 0.25 * conti.b1[i + 1]
-    if (i >= 1) conti.log.sigma.sq[i + 1] = conti.log.sigma.sq[i] 
-    + (-0.6802 - 0.10 * conti.log.sigma.sq[i]) / v 
-    + 0.25 * conti.b1[i + 1]
+    if (i == 0) conti.log.sigma.sq[i + 1] = conti.log.sigma.sq.0 + 
+        (-0.6802 - 0.10 * conti.log.sigma.sq.0) / v + 0.25 * conti.b1[i + 1]
+    if (i >= 1) conti.log.sigma.sq[i + 1] = conti.log.sigma.sq[i] + 
+        (-0.6802 - 0.10 * conti.log.sigma.sq[i]) / v + 0.25 * conti.b1[i + 1]
   }
   conti.sigma.sq = exp(conti.log.sigma.sq)
   conti.sigma = sqrt(exp(conti.log.sigma.sq))
@@ -321,7 +329,6 @@ data.generator = function(v, j.size, w, noise.level){
   for (i in 1:v) {
     conti.part[i] = sum(conti.diff[1:i])
   }
-  
   ### Jump Part Generator ###
   if (w >= 2){
     jump.loca = sort(round(runif(w, min = 0, max = 1) * v, digits = 0))
@@ -333,28 +340,28 @@ data.generator = function(v, j.size, w, noise.level){
     jump.loca = round(runif(w, min = 0, max = 1) * v, digits = 0)
   }
   jump.size = j.size
-  jump.part = rep(0,v)
+  jump.part = rep(0, v)
   for (j in 1:length(jump.loca)){
     for (i in jump.loca[j]:v){
       jump.part[i] = jump.part[i] + jump.size[j]
     }
   }
-  
   ### Noise Part Generator ###
-  noise.part = rnorm(v, mean = 0, sd = noise.level)
-  
+  noise.part = rnorm(v, mean=0, sd=noise.level)
   ### Simulation Data ###
   simu.data = conti.part + jump.part + noise.part
   simu.data.nojump = conti.part + noise.part
   simu.data.conti = conti.part
   
-  return(list(simu.data = simu.data, simu.data.nojump = simu.data.nojump, 
-              simu.data.conti = simu.data.conti, jump.loca = jump.loca, 
+  return(list(simu.data = simu.data, 
+              simu.data.nojump = simu.data.nojump, 
+              simu.data.conti = simu.data.conti, 
+              jump.loca = jump.loca, 
               sigma.sq = conti.sigma.sq))
 }
 
 
-#### Integrated Volatilities Analysis Functions ####
+#### Integrated Violatilities Analysis Functions ####
 
 ### RV ###
 RV = function(jump.adjusted.data){
@@ -369,35 +376,35 @@ ASRV.calculator = function(jump.adjusted.data, K){
   n = length(data)
   sum.ASRV = 0
   for (i in 1:(n - K)){
-    sum.ASRV = sum.ASRV + (data[i + K] - data[i]) ^ 2  
+    sum.ASRV = sum.ASRV + (data[i+K] - data[i]) ^ 2  
   }
   ASRV = sum.ASRV / K
   return(ASRV)
 }
 
 ### JTSRV ###
-JTSRV = function(jump.adjusted.data,K){
+JTSRV = function(jump.adjusted.data, K){
   data = jump.adjusted.data
-  JTSRV = ASRV.calculator(data,K) - 1 / K * ASRV.calculator(data,1)
+  JTSRV = ASRV.calculator(data, K) - 1 / K * ASRV.calculator(data, 1)
   JTSRV
 }
 
 ### JMSRV ###
-JMSRV = function(jump.adjusted.data,M,C){ 
+JMSRV = function(jump.adjusted.data, M, C){ 
   data = jump.adjusted.data 
   n = length(data)
   v = vector(mode="numeric", length = 1)
   a = vector(mode="numeric", length = M)
   theta = 0
   for (m in 1:M){
-    a[m] = 12*(m + C) * (m - M / 2 - 1 / 2) / (M * (M ^ 2 - 1))
+    a[m] = 12 * (m + C) * (m - M / 2 - 1 / 2) / (M * (M ^ 2 - 1))
   }
   zeta = (M + C) * (C + 1) / ((n + 1) * (M - 1))
   for (m in 1:M){
     Km = m + C
-    v = v + a[m] * ASRV.calculator(data, Km)
+    v = v + a[m]*ASRV.calculator(data, Km)
   }
-  theta = v + zeta*(ASRV.calculator(data, C + 1) -
+  theta = v + zeta*(ASRV.calculator(data, C + 1) - 
                       ASRV.calculator(data, C + M))
   JMSRV = theta
   return(JMSRV)
@@ -410,8 +417,8 @@ RBPV.vol = function(simu.data){
   RBPV = 0
   i = 3
   for (i in 3:n){
-    RBPV = RBPV + 1 / (0.79788) ^ 2 * abs(data[i] - data[i - 1]) * 
-      abs(data[i - 1] - data[i - 2])
+    RBPV = RBPV + 1 / (0.79788) ^ 2 * 
+      abs(data[i] - data[i - 1]) * abs(data[i - 1] - data[i - 2])
   }
   return(RBPV)
 }
@@ -422,14 +429,14 @@ RBPV.vol.subsamp = function(simu.data, K){
   RBPV = 0
   i = 2 * K + 1
   for (i in (2 * K + 1):n){
-    RBPV = RBPV + 1 / (0.79788) ^ 2 / K * abs(data[i]-data[i - K]) *
-      abs(data[i - K] - data[i - 2 * K])
+    RBPV = RBPV + 1 / (0.79788) ^ 2 / K * 
+      abs(data[i] - data[i - K]) * abs(data[i - K] - data[i - 2 * K])
   }
   return(RBPV)
 }
 
 
-#### Reproduce of Figure 2 and Figure 3 Contents ####
+#### Reproduce Figure 2 and Figure 3 Contents ####
 set.seed(54321)
 
 RV.MSE = c()
@@ -441,7 +448,7 @@ RBPV.jump.MSE = c()
 RBPV.5.jump.MSE = c()
 RBPV.15.jump.MSE = c()
 JMSRV.MSE = c()
-#JTSRV.MSE = c()
+JTSRV.MSE = c()
 JV.MSE = c()
 jump.exact.pct = c()
 s1.JMSRV.MSE = c()
@@ -469,7 +476,10 @@ for (j in 1:t) {
   RBPV.5.record = c()
   RBPV.15.record = c()
   RBPV.jump.record = c()
+  RBPV.5.jump.record = c()
+  RBPV.15.jump.record = c()
   JMSRV.record = c()
+  JTSRV.record = c()
   JV.MSE.record = c()
   jump.num.detect = c()
   jump.acc = c()
@@ -491,7 +501,7 @@ for (j in 1:t) {
   d3.jump.acc = c()
   noise.level = max.noise * (j - 1) / (t - 1)
   
-  for (i in 1: m){
+  for (i in 1:m){
     w = round(runif(1, -0.5, 6.5))
     
     if (w != 0) {
@@ -500,7 +510,7 @@ for (j in 1:t) {
         j.s = rnorm(w, 0.03, 0.01)
       }
       r.n = runif(w)
-      for (k in 1: w){
+      for (k in 1:w){
         if (r.n[k] < 0.5) j.s[k] = -1 * j.s[k]
       }
     }
@@ -522,16 +532,24 @@ for (j in 1:t) {
                           sum(result$sigma.sq) / n) ^ 2
     RBPV.15.record[i] = (RBPV.vol.subsamp(result$simu.data, 15) - 
                            sum(result$sigma.sq) / n) ^ 2
-    RBPV.jump.record[i] = (RV(result$simu.data) -
+    RBPV.jump.record[i] = (RV(result$simu.data) - 
                              RBPV.vol.subsamp(result$simu.data, 1) - 
                              sum(j.s ^ 2)) ^ 2
+    RBPV.5.jump.record[i] = (RV(result$simu.data) - 
+                               RBPV.vol.subsamp(result$simu.data, 5) - 
+                               sum(j.s ^ 2)) ^ 2
+    RBPV.15.jump.record[i] = (RV(result$simu.data) - 
+                                RBPV.vol.subsamp(result$simu.data, 15) - 
+                                sum(j.s ^ 2)) ^ 2
     
     Info = jump.dector.MODWT.haar(result$simu.data, 4, 16)
     RV.adj.record[i] = (RV(Info$jump.adj.data) - 
                           sum(result$sigma.sq) / n) ^ 2
     JMSRV.record[i] = (JMSRV(Info$jump.adj.data, 26, 26) - 
                          sum(result$sigma.sq) / n) ^ 2 
-    JV.MSE.record[i] = (sum(Info$detect.jump.size ^ 2) - 
+    JTSRV.record[i] = (JTSRV(Info$jump.adj.data, 12) - 
+                         sum(result$sigma.sq) / n) ^ 2 
+    JV.MSE.record[i] = (sum(Info$detect.jump.size^2) - 
                           sum(j.s ^ 2)) ^ 2
     if (Info$detect.jump.loca[1] != "NA") {
       jump.num.detect[i] = length(Info$detect.jump.loca)
@@ -543,8 +561,7 @@ for (j in 1:t) {
     Info.s1 = jump.dector.MODWT.s8(result$simu.data, 1, 16)
     s1.JMSRV.record[i] = (JMSRV(Info.s1$jump.adj.data, 26, 26) - 
                             sum(result$sigma.sq) / n) ^ 2 
-    s1.JV.MSE.record[i] = (sum(Info.s1$detect.jump.size^2) - 
-                             sum(j.s ^ 2)) ^ 2
+    s1.JV.MSE.record[i] = (sum(Info.s1$detect.jump.size ^ 2) - sum(j.s ^ 2)) ^ 2
     if (Info.s1$detect.jump.loca[1] != "NA") {
       s1.jump.num.detect[i] = length(Info.s1$detect.jump.loca)
       }
@@ -577,8 +594,8 @@ for (j in 1:t) {
     if (d2.jump.num.detect[i] != w) {d2.jump.acc[i] = 0}
     
     Info.d3 = jump.dector.MODWT.d4(result$simu.data, 3, 16)
-    d3.JMSRV.record[i] = (JMSRV(Info.d3$jump.adj.data, 26, 26) - 
-                            sum(result$sigma.sq) / n) ^ 2 
+    d3.JMSRV.record[i] = (JMSRV(Info.d3$jump.adj.data, 26, 26) 
+                          - sum(result$sigma.sq) / n) ^ 2 
     d3.JV.MSE.record[i] = (sum(Info.d3$detect.jump.size ^ 2) - 
                              sum(j.s ^ 2)) ^ 2
     if (Info.d3$detect.jump.loca[1] != "NA") {
@@ -589,26 +606,29 @@ for (j in 1:t) {
     if (d3.jump.num.detect[i] != w) {d3.jump.acc[i] = 0}
   }
   
-  RV.MSE[j] = sum(RV.record) / m
-  RV.adj.MSE[j] = sum(RV.adj.record) / m
-  RBPV.MSE[j] = sum(RBPV.record) / m
-  RBPV.5.MSE[j] = sum(RBPV.5.record) / m
-  RBPV.15.MSE[j] = sum(RBPV.15.record) / m
-  RBPV.jump.MSE[j] = sum(RBPV.jump.record) / m
-  JMSRV.MSE[j] = sum(JMSRV.record) / m
-  JV.MSE[j] = sum(JV.MSE.record) / m
+  RV.MSE[j] = sum(RV.record) / m * 10000
+  RV.adj.MSE[j] = sum(RV.adj.record) / m * 10000
+  RBPV.MSE[j] = sum(RBPV.record) / m * 10000
+  RBPV.5.MSE[j] = sum(RBPV.5.record) / m * 10000
+  RBPV.15.MSE[j] = sum(RBPV.15.record) / m * 10000
+  RBPV.jump.MSE[j] = sum(RBPV.jump.record) / m * 10000
+  RBPV.5.jump.MSE[j] = sum(RBPV.5.jump.record) / m * 10000
+  RBPV.15.jump.MSE[j] = sum(RBPV.15.jump.record) / m * 10000
+  JMSRV.MSE[j] = sum(JMSRV.record) / m * 10000
+  JTSRV.MSE[j] = sum(JTSRV.record) / m * 10000
+  JV.MSE[j] = sum(JV.MSE.record) / m * 10000
   jump.exact.pct[j] = sum(jump.acc) / m * 100
-  s1.JMSRV.MSE[j] = sum(s1.JMSRV.record) / m
-  s1.JV.MSE[j] = sum(s1.JV.MSE.record) / m
-  s1.jump.exact.pct[j] = sum(s1.jump.acc) / m * 100
-  s2.JMSRV.MSE[j] = sum(s2.JMSRV.record) / m
-  s2.JV.MSE[j] = sum(s2.JV.MSE.record) / m
+  s1.JMSRV.MSE[j] = sum(s1.JMSRV.record) / m * 10000
+  s1.JV.MSE[j] = sum(s1.JV.MSE.record) / m * 10000
+  s1.jump.exact.pct[j] = sum(s1.jump.acc) / m * 10000
+  s2.JMSRV.MSE[j] = sum(s2.JMSRV.record) / m * 10000
+  s2.JV.MSE[j] = sum(s2.JV.MSE.record) / m * 10000
   s2.jump.exact.pct[j] = sum(s2.jump.acc) / m * 100
-  d2.JMSRV.MSE[j] = sum(d2.JMSRV.record) / m
-  d2.JV.MSE[j] = sum(d2.JV.MSE.record) / m
+  d2.JMSRV.MSE[j] = sum(d2.JMSRV.record) / m * 10000
+  d2.JV.MSE[j] = sum(d2.JV.MSE.record) / m * 10000
   d2.jump.exact.pct[j] = sum(d2.jump.acc) / m * 100
-  d3.JMSRV.MSE[j] = sum(d3.JMSRV.record) / m
-  d3.JV.MSE[j] = sum(d3.JV.MSE.record) / m
+  d3.JMSRV.MSE[j] = sum(d3.JMSRV.record) / m * 10000
+  d3.JV.MSE[j] = sum(d3.JV.MSE.record) / m * 10000
   d3.jump.exact.pct[j] = sum(d3.jump.acc) / m * 100
 }
 
@@ -640,7 +660,6 @@ for (k in 1:20){
   n = 672
   
   for (i in 1:N) {
-    
     w = round(runif(1, 0.500001, 6.5))
     j.s = rep(0, w)
     r.n = runif(w)
@@ -652,9 +671,9 @@ for (k in 1:20){
     result = data.generator(n, j.s, w, noise.level)
     Info = jump.dector.MODWT.haar(result$simu.data, 4, 16)
     if (Info$detect.jump.loca[1] != "NA") {
-      detection.result.2[i] = length(Info$detect.jump.loca)}
-    if (Info$detect.jump.loca[1] =="NA") {detection.result.2[i] = 0
-    }
+      detection.result.2[i] = length(Info$detect.jump.loca)
+      }
+    if (Info$detect.jump.loca[1] =="NA") {detection.result.2[i] = 0}
     if (detection.result.2[i] == w) {jump.acc.2[i] = 1}
     if (detection.result.2[i] != w) {jump.acc.2[i] = 0}
     
@@ -700,33 +719,31 @@ for (k in 1:20){
 
 
 #### Reproduce Figure 2 ####
-png("Wavelet_Method_Evaluation.png", 
-    units = "in", height = 5.1, width = 9.7, res = 300)
+#png("Wavelet_Method_Evaluation.png", 
+#    units = "in", height = 5.1, width = 9.7, res = 300)
 
-par(mfrow = c(1,2), oma = c(1.5, 0, 0, 0), 
+par(mfrow = c(1, 2), oma = c(1.5, 0, 0, 0), 
     mar = c(3, 3, 3, 1.5) + 0.2, mgp = c(2, 1, 0))
 
-x = seq(0,max.noise,max.noise/19)
-plot(x, JV.MSE, type = "l", lty = 1, 
-     col = "black", 
-     cex.lab = 0.85, cex.axis = 0.85, 
+x = seq(0, max.noise, max.noise / 19)
+plot(x, JV.MSE / 10000, type = "l", lty = 1, 
+     col = "black", cex.lab = 0.85, cex.axis = 0.85, 
      cex.main = 1, cex.sub = 0.85,
      ylim = c(0, 0.06 / 10000), ylab = "MSE", 
      xlab = "Noise Level", main = "(a) Jump Variation Accuracy")
-lines(x, RBPV.jump.MSE, type = "l", lty = 3, col = "grey")
+lines(x, RBPV.jump.MSE / 10000, type="l", lty = 3, col = "grey")
 
-plot(x, JMSRV.MSE, type = "l", lty = 1, 
-     col = "black",
-     cex.lab = 0.85, cex.axis = 0.85, 
+plot(x, JMSRV.MSE / 10000, type="l", lty=1, 
+     col = "black", cex.lab = 0.85, cex.axis = 0.85, 
      cex.main = 1, cex.sub = 0.85,
-     ylim = c(0, 0.4 / 10000),
-     ylab = "MSE", xlab = "Noise Level", 
-     main = "(b) Integrated Volatility Accuracy")
-lines(x, RV.MSE, type = "l", lty = 2, col = "grey50")
-lines(x, RV.adj.MSE, type = "l", lty = 5, col = "grey80")
-lines(x, RBPV.MSE, type = "l", lty =3, col = "grey")
-lines(x, RBPV.5.MSE, type = "l", lty = 4, col = "grey50")
-lines(x, RBPV.15.MSE, type = "l", lty = 6, col = "grey80")
+     ylim=c(0, 0.4 / 10000),
+     ylab="MSE", xlab="Noise Level", 
+     main="(b) Integrated Volatility Accuracy")
+lines(x, RV.MSE / 10000, type = "l", lty = 2, col = "grey50")
+lines(x, RV.adj.MSE / 10000, type = "l", lty = 5, col = "grey80")
+lines(x, RBPV.MSE / 10000, type = "l", lty =3, col = "grey")
+lines(x, RBPV.5.MSE / 10000, type = "l", lty = 4, col = "grey50")
+lines(x, RBPV.15.MSE / 10000, type = "l", lty = 6, col = "grey80")
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), 
     mar = c(0, 0, 0, 0), new = TRUE)
@@ -747,33 +764,33 @@ dev.off()
 
 
 #### Reproduce Figure 3 ####
-png("Wavelet_Filter_Comparison.png", 
-    units = "in", height = 9, width = 9, res = 300)
+#png("Wavelet_Filter_Comparison.png", 
+#    units = "in", height = 9, width = 9, res = 300)
 
-par(mfrow = c(2, 2), oma = c(2, 0, 0, 0), 
+par(mfrow=c(2, 2), oma = c(2, 0, 0, 0), 
     mar = c(3, 3, 3, 1.5) + 0.2, mgp = c(2, 1, 0))
 
-x = seq(0, max.noise, max.noise / 19)
-plot(x, JV.MSE, type = "l", lty = 1, col = "black",
-     ylim = c(0,0.08 / 10000), ylab = "MSE", 
+x = seq(0, max.noise,max.noise / 19)
+plot(x, JV.MSE / 10000, type = "l", lty = 1, col = "black",
+     ylim = c(0, 0.08 / 10000), ylab = "MSE", 
      xlab = "Noise Level", main = "(a) Jump Variation Accuracy")
-lines(x, s1.JV.MSE, type = "l", lty = 2, col = "grey50")
-lines(x, s2.JV.MSE, type = "l", lty = 5, col = "grey80")
-lines(x, d2.JV.MSE, type = "l", lty = 4, col = "grey50")
-lines(x, d3.JV.MSE, type = "l", lty = 6, col = "grey80")
-lines(x, RBPV.jump.MSE, type="l", lty = 3, col = "black")
+lines(x, s1.JV.MSE / 10000, type = "l", lty = 2, col = "grey50")
+lines(x, s2.JV.MSE / 10000, type = "l", lty = 5, col = "grey80")
+lines(x, d2.JV.MSE / 10000, type = "l", lty = 4, col = "grey50")
+lines(x, d3.JV.MSE / 10000, type = "l", lty = 6, col = "grey80")
+lines(x, RBPV.jump.MSE / 10000, type="l", lty = 3, col = "black")
 
-plot(x, JMSRV.MSE, type = "l", lty = 1,  col = "black",
-     ylim = c(0,0.08 / 10000),
-     ylab = "MSE", xlab = "Noise Level", 
-     main = "(b) Integrated Volatility Accuracy")
-lines(x, s1.JMSRV.MSE, type = "l", lty = 2, col = "grey50")
-lines(x, s2.JMSRV.MSE, type = "l", lty = 5, col = "grey80")
-lines(x, d2.JMSRV.MSE, type = "l", lty = 4, col = "grey50")
-lines(x, d3.JMSRV.MSE, type = "l", lty = 6, col = "grey80")
-lines(x, RBPV.MSE, type="l", lty = 3, col = "black")
+plot(x, JMSRV.MSE / 10000, type="l",lty=1,  col = "black",
+     ylim=c(0,0.08 / 10000),
+     ylab="MSE", xlab="Noise Level", 
+     main="(b) Integrated Volatility Accuracy")
+lines(x, s1.JMSRV.MSE / 10000, type = "l", lty = 2, col = "grey50")
+lines(x, s2.JMSRV.MSE / 10000, type = "l", lty = 5, col = "grey80")
+lines(x, d2.JMSRV.MSE / 10000, type = "l", lty = 4, col = "grey50")
+lines(x, d3.JMSRV.MSE / 10000, type = "l", lty = 6, col = "grey80")
+lines(x, RBPV.MSE / 10000, type="l", lty = 3, col = "black")
 
-plot(x, jump.exact.pct, type = "l", col = "black", 
+plot(x,jump.exact.pct, type = "l", col = "black", 
      ylim = c(0,100), ylab = "Percentage (%)", 
      xlab = "Noise Level", 
      main = "(c) Jump Number Accuracy vs. Noise Level")
@@ -783,10 +800,10 @@ lines(x, d2.jump.exact.pct, type = "l", lty = 4, col = "grey50")
 lines(x, d3.jump.exact.pct, type = "l", lty = 6, col = "grey80")
 
 u = seq(0.005, 0.1, 0.005)
-plot(u, jump.num.2, type = "l", col = "black",
-     ylim = c(0, 100), ylab="Percentage (%)", 
-     xlab = "Jump Magnitude", 
-     main = "(d) Jump Number Accuracy vs. Jump Magnitude")
+plot(u, jump.num.2, type="l", col = "black",
+     ylim=c(0,100), ylab="Percentage (%)", 
+     xlab="Jump Magnitude", 
+     main="(d) Jump Number Accuracy vs. Jump Magnitude")
 lines(u, s1.jump.num.2, type = "l", lty = 2, col = "grey50")
 lines(u, s2.jump.num.2, type = "l", lty = 5, col = "grey80")
 lines(u, d2.jump.num.2, type = "l", lty = 4, col = "grey50")
@@ -815,6 +832,7 @@ dev.off()
 ############### 6 Nitrate Concentration Analysis ###############
 
 ########## Reproduce 6.1 Process Variation Analysis ##########
+
 
 #### Reproduce Process Variation Analysis Information ####
 
@@ -984,6 +1002,34 @@ for (i in 1:86){
   ni.JMSRV[i] = JMSRV(data, 26, 26)
 }
 
+### Jump Week Index Vector ###
+all.week.index = c()
+for (i in 1:86){
+  char = as.character(paste("jump.size.week", i, sep = "."))
+  if ((eval(parse(text = char))[1] != 0)) {
+    week.jump.size.data.i = eval(parse(text = char))
+    if (i <= 9){char.i = as.character(paste("Week 0", i, sep = ""))}
+    if (i >= 10){char.i = as.character(paste("Week", i, sep = " "))}
+    all.week.index = c(all.week.index, 
+                       rep(char.i, length(week.jump.size.data.i)))
+  }
+}
+
+### Detected Jump Location (By Weekly Index) ###
+all.week.jump.loca2.data=c()
+for (i in 2:86){
+  char = as.character(paste("jump.loca.week",i, sep = "."))
+  if (eval(parse(text = char))[1] == "NA") {week.jump.loca2.data.i = "NA"}
+  if ((eval(parse(text = char))[1] != "NA")) {
+    week.jump.loca2.data.i = eval(parse(text = char))
+  }
+  all.week.jump.loca2.data = c(all.week.jump.loca2.data, 
+                               week.jump.loca2.data.i)
+}
+all.week.jump.loca2.data = c(jump.loca.week.1, 
+                             as.numeric(all.week.jump.loca2.data[
+                               all.week.jump.loca2.data != "NA"]))
+
 
 #### Reproduce Figure 4 ####
 jump.number.detail = data.frame(jump.index = all.week.index,
@@ -1089,23 +1135,11 @@ legend("bottom", c("Positive Jump Related Quantity",
 dev.off()
 
 
+
 ########## Reproduce 6.2 Jump Distribution Analysis ##########
 
+
 #### Reproduce Jump Distribution Analysis Information ####
-
-### Jump Week Index Vector ###
-
-all.week.index = c()
-for (i in 1:86){
-  char = as.character(paste("jump.size.week", i, sep = "."))
-  if ((eval(parse(text = char))[1] != 0)) {
-    week.jump.size.data.i = eval(parse(text = char))
-    if (i <= 9){char.i = as.character(paste("Week 0", i, sep = ""))}
-    if (i >= 10){char.i = as.character(paste("Week", i, sep = " "))}
-    all.week.index = c(all.week.index, 
-                       rep(char.i, length(week.jump.size.data.i)))
-  }
-}
 
 ### Detected Jump Time and Quarter Information ###
 date.time = data.frame(Date = df$Date, 
@@ -1124,21 +1158,6 @@ getSeason = function(DATES) {
                   ifelse (d >= SS & d < FE, "Q2", "Q3")))
 }
 jump.season = getSeason(jump.date.time[ , 1]) 
-
-### Detected Jump Location (By Weekly Index) ###
-all.week.jump.loca2.data=c()
-for (i in 2:86){
-  char = as.character(paste("jump.loca.week",i, sep = "."))
-  if (eval(parse(text = char))[1] == "NA") {week.jump.loca2.data.i = "NA"}
-  if ((eval(parse(text = char))[1] != "NA")) {
-    week.jump.loca2.data.i = eval(parse(text = char))
-  }
-  all.week.jump.loca2.data = c(all.week.jump.loca2.data, 
-                               week.jump.loca2.data.i)
-}
-all.week.jump.loca2.data = c(jump.loca.week.1, 
-                             as.numeric(all.week.jump.loca2.data[
-                               all.week.jump.loca2.data != "NA"]))
 
 jump.detail.powerful = data.frame(jump.date = jump.date.time[,1], 
                                   jump.time = jump.date.time[,2], 
@@ -1203,11 +1222,13 @@ dev.off()
 
 #### Table 1 Producing ####
 ### Quarter-2 ###
+length(abs(Q2.jump))
 summary(abs(Q2.jump))
 descdist(abs(Q2.jump), discrete = FALSE, graph = FALSE)
 var(abs(Q2.jump))
 
 ### Non-Quarter-2 ###
+length(abs(NonQ2.jump))
 summary(abs(NonQ2.jump))
 descdist(abs(NonQ2.jump), discrete = FALSE, graph = FALSE)
 var(abs(NonQ2.jump))
