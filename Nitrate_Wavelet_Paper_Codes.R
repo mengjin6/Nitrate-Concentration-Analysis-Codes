@@ -11,6 +11,11 @@ install.packages("TSA")
 install.packages("fitdistrplus")
 install.packages("logspline")
 install.packages("actuar")
+install.packages("xlsx")
+install.packages("lubridate")
+install.packages("zoo")
+install.packages("grid")
+install.packages("xtable")
 
 require(gridExtra)
 require(XLConnectJars)
@@ -23,7 +28,13 @@ require(TSA)
 require(fitdistrplus)
 require(logspline)
 require(actuar)
+require(xlsx)
+require(lubridate)
+require(zoo)
+require(grid)
+require(xtable)
 
+#### ####
 
 
 ############### 1 Introduction ###############
@@ -44,7 +55,6 @@ n.d = data.frame(nitrate = n.d$nitrate[n.d$index >= 1 & n.d$index <= 602],
                  date = n.d$date[n.d$index >= 1 & n.d$index <= 602], 
                  index = n.d$index[n.d$index >= 1 & n.d$index <= 602])
 
-
 #### Reproduce Figure 1 ####
 png("Nitrate_Concentration_Time_Series.png", 
     units = "in", height = 4, width = 8, res = 300)
@@ -60,6 +70,109 @@ axis(side = 1, at = c(1, 25 * 7 + 2, 51 * 7 + 2, 77 * 7 + 3),
      labels = c("Jun 2008", "Dec 2008", "Jun 2009", "Dec 2009"))
 dev.off()
 
+#### ####
+
+
+############### 3 A Brief Review of Wavelets and Jump Detection ###############
+
+#### Figure 2 Producing ####
+fmt_dcimals <- function(decimals=0){
+  function(x) as.character(round(x,decimals))
+}
+
+set.seed(123) 
+data.generator.2 = function(v, j.size, w, mu, sigma1, sigma2, noise.level){
+  v = 1000
+  v1 = floor(2 * v / 5) 
+  v3 = floor(2 * v / 5)
+  v2 = v - v1 - v3
+  
+  conti.b1 = mu / v + rnorm(v1, 0, sd = sigma1 * sqrt(1 / v))
+  conti.b3 = mu / v + rnorm(v3, 0, sd = sigma1 * sqrt(1 / v))
+  conti.b2 = mu / v + rnorm(v2, 0 , sd = sigma2 * sqrt(1 / v))
+  conti.diff = c(conti.b1, conti.b2, conti.b3)
+  conti.part = rep(NA, v)
+  
+  for (i in 1:v) {
+    conti.part[i] = sum(conti.diff[1:i])
+  }
+  
+  # Jump Part Generator #
+  if (w >= 2){
+    jump.loca = sort(round(runif(w, min = 0, max = 1) * v, digits = 0))
+    while (min(diff(jump.loca)) <= 16) {
+      jump.loca = sort(round(runif(w, min = 0, max = 1) * v, digits = 0))
+    }
+  }
+  if (w <= 1){
+    jump.loca = round(runif(w, min = 0, max = 1) * v, digits = 0)
+  }
+  jump.size = j.size
+  jump.part = rep(0, v)
+  for (j in 1:length(jump.loca)){
+    for (i in jump.loca[j]:v){
+      jump.part[i] = jump.part[i] + jump.size[j]
+    }
+  }
+  
+  # Noise Part Generator #
+  noise.part = rnorm(v, mean=0, sd=noise.level)
+  
+  # Simulation Data #
+  simu.data = conti.part + jump.part + noise.part
+  simu.data.nojump = conti.part + noise.part
+  simu.data.conti = conti.part
+  
+  # Simulation Data Output #
+  return(list(simu.data = simu.data, 
+              simu.data.nojump = simu.data.nojump, 
+              simu.data.conti = simu.data.conti, 
+              jump.loca = jump.loca,
+              v = v,
+              v1 = v1,
+              v2 = v2,
+              v3 = v3))
+  
+}
+
+simu.results = data.generator.2(v = 1000, j.size = 0, w = 1, mu = 0, sigma1 = 1, 
+                                sigma2 = 1, noise.level = 0.005)
+detection.results = jump.dector.MODWT.haar(simu.results$simu.data,layer = 4, index = 16)
+pol.data = data.frame(index = seq(1, simu.results$v), 
+                      ni.ori = simu.results$simu.data,
+                      ni.adj = detection.results$jump.adj.data)
+
+p10 = ggplot(pol.data, aes(index, ni.ori)) + 
+  geom_line(size = 0.5, colour = "black") + 
+  labs(x="Time",y="Simulated Data") +
+  scale_color_manual(values=c("blue")) +
+  geom_vline(colour = "grey", size = 0.5,
+             xintercept = detection.results$detect.jump.loca) +
+  geom_vline(colour = "grey", size = 0.5,linetype = 2,
+             xintercept = c(simu.results$v1, simu.results$v1 + simu.results$v2)) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(colour = "white"),
+        panel.border = element_rect(colour = "black", fill=NA),
+        plot.margin=unit(c(0.5, 0.25, 0.25, 0.5), "cm"),
+        legend.position = "",
+        axis.text.y = element_text(angle = 90,  hjust = 0.45, margin = unit(c(0, 4, 0, 0), "mm")),
+        axis.text.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14)) +
+  scale_x_continuous(breaks = sort(c(c(0, 200, 400, 600, 800, 1000), 
+                                     detection.results$detect.jump.loca)), 
+                     label = c("0", "0.2", "0.4", expression(hat(r)[1]), 
+                               expression(hat(r)[2]), expression(hat(r)[3]), 
+                               expression(hat(r)[4]), expression(hat(r)[5]), 
+                               "0.6", "0.8", "1"))
+
+p10
+
+png("Homogeneous_volatility_requirement.png", 
+    units = "in", height = 4.2, width = 9.2, res = 300)
+p10
+dev.off()
+#### ####
 
 
 ############### 5 Simulation Studies ###############
@@ -306,6 +419,7 @@ jump.dector.MODWT.d4 = function(simu.data, layer, index){
               range = index))
 }
 
+#### ####
 
 #### Simulation Data Generator from model (5.1) in the paper ####
 data.generator = function(v, j.size, w, noise.level){
@@ -436,8 +550,9 @@ RBPV.vol.subsamp = function(simu.data, K){
   return(RBPV)
 }
 
+#### ####
 
-#### Reproduce Figure 2 and Figure 3 Contents ####
+#### Reproduce Figure 3 and Figure 4 Contents ####
 set.seed(54321)
 
 RV.MSE = c()
@@ -719,7 +834,7 @@ for (k in 1:20){
 }
 
 
-#### Reproduce Figure 2 ####
+#### Reproduce Figure 3 ####
 png("Wavelet_Method_Evaluation.png", 
     units = "in", height = 5.1, width = 9.7, res = 300)
 
@@ -764,7 +879,7 @@ legend("bottom", c("Haar Level 4", "RV", "RV.adj", "RBPV",
 dev.off()
 
 
-#### Reproduce Figure 3 ####
+#### Reproduce Figure 4 ####
 png("Wavelet_Filter_Comparison.png", 
     units = "in", height = 9, width = 9, res = 300)
 
@@ -828,6 +943,10 @@ legend("bottom", c("Haar Level 4", "s8 Level 1", "s8 Level 2",
 
 dev.off()
 
+
+
+
+#### ####
 
 
 ############### 6 Nitrate Concentration Analysis ###############
@@ -1049,7 +1168,7 @@ sum(ni.JMSRV < 0.1)
 sum(ni.JMSRV > 1)
 
 
-#### Reproduce Figure 4 ####
+#### Reproduce Figure 5 ####
 jump.number.detail = data.frame(jump.index = all.week.index,
                                 jump.loca = all.week.jump.loca2.data,
                                 jump.sign = sign(all.week.jump.size.data),
@@ -1089,7 +1208,7 @@ p6
 dev.off()
 
 
-#### Reproduce Figure 5 ####
+#### Reproduce Figure 6 ####
 png("Log_Scale_Nitrate_Summary_Haar_4.png", 
     units = "in", height = 8, width = 8, res = 300)
 
@@ -1148,11 +1267,11 @@ plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
 legend("bottom", c("Positive Jump Related Quantity", 
                    "Negative Jump Related Quantity"), 
        xpd = FALSE, horiz = TRUE, lty = c(1, 3), bty = "n", 
-       cex = 1, x.intersp = 1)
+       cex = 1, x.intersp = 1) +
 
 dev.off()
 
-
+#### ####
 
 ########## Reproduce 6.2 Jump Distribution Analysis ##########
 
@@ -1207,13 +1326,13 @@ ks.test(posi.jump, nega.jump.abs)
 ks.test(abs(Q2.jump), abs(NonQ2.jump))
 
 
-#### Figure 6 Producing ####
+#### Figure 7 Producing ####
 png("ACF.png", units = "in", height = 3, width = 10, res = 300)
 acf(all.jump, lag.max = 20, main = "")
 dev.off()
 
 
-#### Figure 7 Producing ####
+#### Figure 8 Producing ####
 mybreaks1 <- seq(from = -9, to = 9, by = 0.3)
 p11 = hist(posi.jump, breaks = mybreaks1, plot = FALSE)
 p21 = hist(nega.jump, breaks = mybreaks1, plot = FALSE)
@@ -1238,7 +1357,6 @@ plot(p1, xlim = c(-10,10), col = "grey", border = "grey50",
      add = T)
 axis(side = 1, at = c(-10, -5, 0, 5, 10), labels = c(10, 5, 0, 5, 10))
 dev.off()
-
 
 #### Table 1 Producing ####
 ### Quarter-2 ###
@@ -1272,7 +1390,7 @@ ks.test(abs.Q2.jump, "pburr", shape1 = fit.burr$estimate[1],
         shape2 = fit.burr$estimate[2], rate = fit.burr$estimate[3])
 
 
-#### Figure 8 Producing ####
+#### Figure 9 Producing ####
 Q2.fit = fit.ln
 png("Quarter-2_Diagnostic.png", 
     units = "in", height = 5.1, width = 9.7, res = 300)
@@ -1306,7 +1424,7 @@ ks.test(abs.NonQ2.jump, "pburr", shape1 = fit.burr$estimate[1],
         shape2 = fit.burr$estimate[2], rate = fit.burr$estimate[3])
 
 
-#### Figure 9 Producing ####
+#### Figure 10 Producing ####
 NonQ2.fit = fit.burr
 png("Non-Quarter-2_Diagnostic.png", 
     units = "in", height = 5.1, width = 9.7, res = 300)
@@ -1330,3 +1448,278 @@ qlnorm(c(0.90, 0.95, 0.99), Q2.fit$estimate[1], Q2.fit$estimate[2])
 
 qburr(c(0.90, 0.95, 0.99), NonQ2.fit$estimate[1], NonQ2.fit$estimate[2], 
       NonQ2.fit$estimate[3])
+
+
+
+
+#### ####
+
+#### Reproduce 6.3 Discussion ####
+#### Figure 11 producing  ####
+### Variation percentage checking ###
+week.detail = c()
+week.begin = c()
+week.end = c()
+for (i in 1 : 86){
+  data = n.d[n.d$index > 7*(i - 1) & n.d$index <= 7 * i, ]
+  week.begin[i] = as.character(data$date[1])
+  week.end[i] = as.character(data$date[length(data$date)])
+}
+
+week.ym = as.yearmon(as.Date(week.begin), "%y%m")
+week.m = month.abb[month(as.Date(week.begin))]
+cbind(1:86, week.m)
+c.char = "Week"
+i.char = as.character(10:86)
+i.char = c("01", "02", "03", "04", "05", "06", "07", "08", "09", i.char)
+char1 = as.character(paste0(c.char, i.char, sep = ""))
+s3.char = "-"
+week.info = as.character(paste0(char1, s3.char, week.m), sep = "")
+
+nega.var = week.nega.jump.var
+posi.var = week.posi.jump.var
+total.var = nega.var + posi.var + ni.JMSRV
+posi.var.perc = posi.var / total.var
+nega.var.perc = nega.var / total.var
+conti.var.perc = ni.JMSRV / total.var
+
+jump.var.perc = data.frame(index = 1:86, 
+                           begin.date = as.POSIXct(week.begin),
+                           end.date = as.POSIXct(week.end),
+                           posi.jump.var = posi.var,
+                           nega.jump.var = nega.var,
+                           baseline.var = ni.JMSRV,
+                           total.var = total.var,
+                           posi.jump.var.perc = round(posi.var.perc, 2), 
+                           nega.jump.var.perc = round(nega.var.perc, 2),
+                           totoal.jump.var.perc = round(posi.var.perc + nega.var.perc, 2))
+colnames(jump.var.perc) = c('Week index', 
+                            'Week begin date',
+                            'Week end date',
+                            'Positive jump variation', 
+                            'negative jump variation', 
+                            'Baseline variation (continuous part)', 
+                            'Total variation',
+                            'Positive jump variation percentage (%)', 
+                            'Negative jump variation percentage (%)', 
+                            'Total jump variation (%)')
+
+write.xlsx(jump.var.perc, "jump_variation_by_source_Raccoon_v2.xlsx")
+
+jump.var.perc = data.frame(index = 1:86, posi.var = round(posi.var.perc * 100, 0), 
+                           nega.var = round(nega.var.perc * 100, 0),
+                           total.jump.var = round((posi.var.perc + nega.var.perc) * 100, 0))
+
+posi.var1 = data.frame(index = 1:86, 
+                       large.var = (total.var >= as.vector(quantile(total.var, c(.90)))), 
+                       var.perc = posi.var.perc, source = rep("positive jump variation", 86), 
+                       week.info = as.character(week.info), stringsAsFactors=FALSE)
+nega.var1 = data.frame(index = 1:86, 
+                       large.var = (total.var >= as.vector(quantile(total.var, c(.90)))), 
+                       var.perc = nega.var.perc, source = rep("negative jump variation", 86), 
+                       week.info = as.character(week.info), stringsAsFactors=FALSE)
+var.source = rbind(nega.var1, posi.var1)
+
+for (i in 1:length(var.source$index)){
+  if (!(var.source[i, 2])){ 
+    var.source[i, 3] = 0
+  }
+}
+
+for (i in 1:length(var.source$index)){
+  if (!(var.source[i, 2]) | var.source[i, 4] == "positive jump variation"){ 
+    var.source[i, 5] = ''
+  }
+}
+
+pp = ggplot(var.source, aes(x = index, y = var.perc, fill = factor(source))) + 
+  geom_bar(stat = "identity", colour="black", size = 0.25, width = 1) +
+  scale_fill_manual("legend", values = c("positive jump variation" = "grey", 
+                                         "negative jump variation" = "white")) +
+  labs(x = "", y = "Percentage (%)") + 
+  scale_x_continuous(breaks = c(2, 28, 54, 80), 
+                     label = c("Jun 2008", "Dec 2008", "Jun 2009", "Dec 2009")) +
+  scale_y_continuous(limits = c(0, 1.01), 
+                     breaks = c(0, 0.25, 0.5, 0.75, 1), 
+                     label = c("0%", "25%", "50%", "75%", "100%")) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(colour = "white"),
+        panel.border = element_rect(colour = "black", fill=NA),
+        plot.margin=unit(c(0.59, 0.5, 0.5, 0.5), "cm"),
+        legend.position = "bottom",
+        legend.margin=margin(0,0,0,0),
+        legend.box.margin=margin(-10,-20,-10,-20),
+        legend.key = element_rect(size = 1),
+        legend.key.size = unit(1, 'lines'),
+        plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_text(angle = 90,  hjust = 0.45, margin = unit(c(0, 4, 0, 0), "mm")),
+        axis.text.x = element_text(margin = unit(c(4, 0, 0, 0), "mm")),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14)) + 
+  guides(fill=guide_legend(title="", keywidth = 1, keyheight = 1)) 
+
+pp2 = pp + geom_text(angle = 90, hjust = 0, size = 2.25, 
+               aes(x = var.source$index, 
+                   y=rep(posi.var.perc + nega.var.perc - 0.19, 2), 
+                   label = week.info))
+
+png("Variation_Quantifying_Upper10perc_v4.png", 
+    units = "in", height = 4, width = 9.2, res = 300)
+pp2
+dev.off()
+
+#### ####
+
+
+#### Supplemental Appendix ####
+#### Table A.1 Producing ####
+data.generator.4 = function(v, j.size, w, mu, sigma1, sigma2, noise.level){
+  
+  # Coutinuous Part 1 Genrator #
+  
+  v1 = floor(2 * v / 5) 
+  v3 = floor(2 * v / 5)
+  v2 = v - v1 - v3
+  
+  conti.b1 = mu / v + rnorm(v1, 0, sd = sigma1 * sqrt(1 / v))
+  conti.b3 = mu / v + rnorm(v3, 0, sd = sigma1 * sqrt(1 / v))
+  conti.temp = rnorm(v2, 0 , sd = sigma1 * sqrt(1 / v))
+  
+  conti.b2 = mu / v + sigma2 / sigma1 * conti.temp
+  conti.diff.1 = c(conti.b1, conti.b2, conti.b3)
+  conti.part.1 = rep(NA, v)
+  
+  for (i in 1:v) {
+    conti.part.1[i] = sum(conti.diff.1[1:i])
+  }
+  
+  # Coutinuous Part 2 Genrator #
+  conti.b4 = mu / v + conti.temp
+  conti.diff.2 = c(conti.b1, conti.b4, conti.b3)
+  conti.part.2 = rep(NA, v)
+  
+  for (i in 1:v) {
+    conti.part.2[i] = sum(conti.diff.2[1:i])
+  }
+  
+  # Jump Part Generator #
+  if (w >= 2){
+    jump.loca = sort(round(runif(w, min = 0, max = 1) * v, digits = 0))
+    while (min(diff(jump.loca)) <= 16) {
+      jump.loca = sort(round(runif(w, min = 0, max = 1) * v, digits = 0))
+    }
+  }
+  if (w <= 1){
+    jump.loca = round(runif(w, min = 0, max = 1) * v, digits = 0)
+  }
+  jump.size = j.size
+  jump.part = rep(0, v)
+  for (j in 1:length(jump.loca)){
+    for (i in jump.loca[j]:v){
+      jump.part[i] = jump.part[i] + jump.size[j]
+    }
+  }
+  
+  # Noise Part Generator #
+  noise.part = rnorm(v, mean=0, sd=noise.level)
+  
+  # Simulation Data 1#
+  simu.data.1 = conti.part.1 + jump.part + noise.part
+  simu.data.nojump.1 = conti.part.1 + noise.part
+  simu.data.conti.1 = conti.part.1
+  
+  # Simulation Data 2#
+  simu.data.2 = conti.part.2 + jump.part + noise.part
+  simu.data.nojump.2 = conti.part.2 + noise.part
+  simu.data.conti.2 = conti.part.2
+  
+  # Simulation Data Output #
+  return(list(simu.data.1 = simu.data.1, 
+              simu.data.nojump.1 = simu.data.nojump.1, 
+              simu.data.conti.1 = simu.data.conti.1, 
+              simu.data.2 = simu.data.2, 
+              simu.data.nojump.2 = simu.data.nojump.2, 
+              simu.data.conti.2 = simu.data.conti.2,
+              jump.loca = jump.loca,
+              v = v,
+              v1 = v1,
+              v2 = v2,
+              v3 = v3))
+}
+simu.results = data.generator.4(v = 672, j.size = 0, w = 1, mu = 0, sigma1 = 1, 
+                                sigma2 = 3, noise.level = 0.005)
+
+freq.mat = matrix(0, nrow = 3000, ncol = 2)
+set.seed(321)
+for (i in 1:3000){
+  mu = rnorm(1, 3)
+  sigma1 = abs(rnorm(1, 1))
+  sigma2 = 3 * sigma1
+  simu.results = data.generator.4(v = 672, j.size = 0, w = 1, mu = mu, sigma1 = sigma1, 
+                                  sigma2 = sigma2, noise.level = 0.005)
+  detection.results.1 = jump.dector.MODWT.haar(simu.results$simu.data.1, layer = 4, index = 16)
+  freq.mat[i, 1] = ifelse(detection.results.1$detect.jump.loca[1] == "NA", 0, length(detection.results.1$detect.jump.loca))
+  detection.results.2 = jump.dector.MODWT.haar(simu.results$simu.data.2, layer = 4, index = 16)  
+  freq.mat[i, 2] = ifelse(detection.results.2$detect.jump.loca[1] == "NA", 0, length(detection.results.2$detect.jump.loca))
+  print(i)
+}
+
+freq.X = as.data.frame(table(freq.mat[, 1]))
+colnames(freq.X) <- c("Numeber of Detected Jumps", "Frequency")
+
+freq.Y = as.data.frame(table(freq.mat[, 2]))
+colnames(freq.Y) <- c("Numeber of Detected Jumps", "Frequency")
+
+1 - sum(freq.X[1, 2]) / 3000
+1 - sum(freq.Y[1, 2]) / 3000
+sum(freq.X[4:7, 2]) / 3000
+sum(freq.Y[4:7, 2]) / 3000
+
+#### Plot A.1 Producing ####
+false.alarm.rate = matrix(NA, nrow = 4, ncol = 201)
+str(false.alarm.rate)
+kappa = 0
+for (k in 1:201){
+  set.seed(321)
+  freq.mat = rep(NA, 3000)
+  for (i in 1:3000){
+    mu = rnorm(1, 3)
+    sigma1 = abs(rnorm(1, 1))
+    sigma2 = (kappa + 1) * sigma1
+    simu.results = data.generator.4(v = 672, j.size = 0, w = 1, mu = mu, sigma1 = sigma1, 
+                                    sigma2 = sigma2, noise.level = 0.005)
+    detection.results.1 = jump.dector.MODWT.haar(simu.results$simu.data.1, layer = 4, index = 16)
+    freq.mat[i] = ifelse(detection.results.1$detect.jump.loca[1] == "NA", 0, length(detection.results.1$detect.jump.loca))
+  }
+  false.alarm.rate[,k] = c(sum(freq.mat >= 1), sum(freq.mat >= 2), 
+                           sum(freq.mat >= 3), sum(freq.mat >= 4)) / 3000
+  kappa = kappa + 0.01
+  print(false.alarm.rate[,k])
+  print(k)
+}
+
+false.alarm = data.frame(kappa = seq(0, 2, 0.01), fal.ala = false.alarm.rate)
+
+p12 = ggplot(false.alarm, aes(kappa, fal.ala)) + 
+  geom_line(size = 0.5, colour = "black") + 
+  labs(x = expression(kappa), y="Jump Detection Rate") +
+  scale_color_manual(values=c("blue")) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(colour = "white"),
+        panel.border = element_rect(colour = "black", fill=NA),
+        plot.margin=unit(c(0.5, 0.25, 0.25, 0.5), "cm"),
+        legend.position = "",
+        axis.text.y = element_text(angle = 90,  hjust = 0.45, margin = unit(c(0, 3, 0, 0), "mm")),
+        axis.text.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14)) +
+  scale_y_continuous(limits = c(0, 0.85),
+                     breaks = c(0, 0.2, 0.4, 0.6, 0.8), 
+                     label = c("0%", "20%", "40%", "60%", "80%"))
+
+png("False_alarm_rate.png", 
+    units = "in", height = 4, width = 5, res = 300)
+p12
+dev.off()
+#### ####
+
